@@ -36,12 +36,12 @@ steps:
       $(Build.BuildId)
     containerRegistry: dockerhub-connection
 
-# Update image tag inside your actual Kubernetes manifest
+# Update image tag inside app-deploy.yaml
 - script: |
     sed -i "s|prasanthrajrp/web-game:latest|prasanthrajrp/web-game:$(Build.BuildId)|" 01_kubernetes_aks/app-deploy.yaml
   displayName: Update image tag in app-deploy.yaml
 
-# Apply updated YAML (Deployment + Service)
+# Apply updated YAML
 - script: |
     kubectl apply -f 01_kubernetes_aks/app-deploy.yaml -n sample-app
   displayName: Deploy web-game to Kubernetes
@@ -49,4 +49,5 @@ steps:
 # Validate rollout
 - script: |
     kubectl -n sample-app rollout status deployment/web-game --timeout=60s
-  displayName: Verify web-game rollout
+  displayName: Verify rollout
+
