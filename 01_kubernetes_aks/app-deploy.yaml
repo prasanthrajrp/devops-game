@@ -1,47 +1,52 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: web-game
-  namespace: sample-app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: web-game
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
-  minReadySeconds: 5
-  template:
-    metadata:
-      labels:
-        app: web-game
-    spec:
-      nodeSelector:
-        kubernetes.io/os: linux
-      containers:
-      - name: web-game
-        image: prasanthrajrp/web-game:latest   # pipeline replaces tag
-        ports:
-        - containerPort: 80
-        resources:
-          requests:
-            cpu: 250m
-          limits:
-            cpu: 500m
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: web-game
-  namespace: sample-app
-spec:
-  type: NodePort
-  selector:
-    app: web-game
-  ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 30080   # safe NodePort (your choice)
+trigger:
+- main
+
+pool:
+  name: cluster-pool
+
+steps:
+- checkout: self
+
+# Login to Docker Hub
+- task: Docker@2
+  displayName: Login to Docker Hub
+  inputs:
+    command: login
+    containerRegistry: dockerhub-connection
+
+# Build Docker Image (web-game)
+- task: Docker@2
+  displayName: Build Docker Image (web-game)
+  inputs:
+    command: build
+    Dockerfile: app/Dockerfile
+    repository: prasanthrajrp/web-game
+    tags: |
+      latest
+      $(Build.BuildId)
+
+# Push Docker Image (web-game)
+- task: Docker@2
+  displayName: Push Docker Image (web-game)
+  inputs:
+    command: push
+    repository: prasanthrajrp/web-game
+    tags: |
+      latest
+      $(Build.BuildId)
+    containerRegistry: dockerhub-connection
+
+# Update image tag inside web-game YAML
+- script: |
+    sed -i "s|prasanthrajrp/web-game:latest|prasanthrajrp/web-game:$(Build.BuildId)|" k8s/web-game.yaml
+  displayName: Update image tag in web-game.yaml
+
+# Apply updated YAML (Deployment + Service)
+- script: |
+    kubectl apply -f k8s/web-game.yaml -n sample-app
+  displayName: Deploy web-game to Kubernetes
+
+# Validate rollout
+- script: |
+    kubectl -n sample-app rollout status deployment/web-game --timeout=60s
+  displayName: Verify web-game rollout
