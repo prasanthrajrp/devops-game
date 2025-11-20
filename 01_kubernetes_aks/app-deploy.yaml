@@ -2,26 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web-game
+  namespace: sample-app
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: web-game
   strategy:
+    type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 1
-  minReadySeconds: 5 
+  minReadySeconds: 5
   template:
     metadata:
       labels:
         app: web-game
     spec:
       nodeSelector:
-        "kubernetes.io/os": linux
+        kubernetes.io/os: linux
       containers:
       - name: web-game
-        image: mylabacr13.azurecr.io/web-game:tag
+        image: prasanthrajrp/web-game:latest   # pipeline replaces tag
         ports:
         - containerPort: 80
         resources:
@@ -34,10 +36,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: web-game
+  namespace: sample-app
 spec:
-  type: LoadBalancer
-  ports:
-  - port: 80
+  type: NodePort
   selector:
     app: web-game
-
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080   # safe NodePort (your choice)
