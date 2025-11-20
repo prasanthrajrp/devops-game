@@ -19,7 +19,7 @@ steps:
   displayName: Build Docker Image (web-game)
   inputs:
     command: build
-    Dockerfile: app/Dockerfile
+    Dockerfile: 2048-game/Dockerfile
     repository: prasanthrajrp/web-game
     tags: |
       latest
